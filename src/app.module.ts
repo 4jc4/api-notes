@@ -5,6 +5,7 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { validateEnv } from './config/env.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { NotesModule } from './modules/notes/notes.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
 @Module({
@@ -16,6 +17,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     PrismaModule,
     HealthModule,
     AuthModule,
+    NotesModule,
   ],
   controllers: [],
   providers: [
