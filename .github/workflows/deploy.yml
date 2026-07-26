@@ -1,0 +1,46 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to LXC api
+    runs-on: self-hosted
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: http://192.168.1.31:3000/health
+
+    steps:
+      - name: Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new deploy@192.168.1.31 '
+            set -e
+            cd /opt/app
+            git pull origin main
+            docker compose run --rm api npx prisma migrate deploy
+            docker compose up -d --build
+          '
+
+      - name: Wait for healthcheck
+        run: |
+          for i in $(seq 1 12); do
+            STATUS=$(ssh deploy@192.168.1.31 "curl -s http://localhost:3000/health | grep -o '\"status\":\"ok\"'" || true)
+            if [ "$STATUS" = '"status":"ok"' ]; then
+              echo "Deploy healthy"
+              exit 0
+            fi
+            echo "Aguardando aplicação ficar saudável... ($i/12)"
+            sleep 5
+          done
+          echo "Aplicação não ficou saudável a tempo"
+          exit 1
