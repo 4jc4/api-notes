@@ -34,8 +34,8 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://notes_test:notes_test@localhost:5432/notes_test
-      JWT_SECRET: ci-test-secret-not-for-production-use-only-32chars
-      JWT_EXPIRES_IN: 1h
+      SESSION_SECRET: ci-test-secret-not-for-production-use-only-32chars
+      SESSION_TTL: 7d
       NODE_ENV: test
 
     steps:

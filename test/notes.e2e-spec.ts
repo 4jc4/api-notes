@@ -1,8 +1,9 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import argon2 from 'argon2';
+import cookieParser from 'cookie-parser';
 import type { Server } from 'node:http';
-import request from 'supertest';
+import request, { type Agent } from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { ProblemDetailsFilter } from '../src/common/filters/problem-details.filter.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
@@ -11,8 +12,8 @@ describe('Notes (e2e)', () => {
   let app: INestApplication;
   let httpServer: Server;
   let prisma: PrismaService;
-  let aliceToken: string;
-  let bobToken: string;
+  let aliceAgent: Agent;
+  let bobAgent: Agent;
   let aliceNoteId: string;
 
   const TEST_EMAILS = ['alice.e2e@example.com', 'bob.e2e@example.com'];
@@ -20,6 +21,9 @@ describe('Notes (e2e)', () => {
   async function cleanupTestData() {
     await prisma.note.deleteMany({
       where: { owner: { email: { in: TEST_EMAILS } } },
+    });
+    await prisma.session.deleteMany({
+      where: { user: { email: { in: TEST_EMAILS } } },
     });
     await prisma.user.deleteMany({
       where: { email: { in: TEST_EMAILS } },
@@ -32,6 +36,8 @@ describe('Notes (e2e)', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
+    app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+    app.use(cookieParser());
     app.useGlobalFilters(new ProblemDetailsFilter());
     await app.init();
 
@@ -49,15 +55,20 @@ describe('Notes (e2e)', () => {
       data: { email: 'bob.e2e@example.com', passwordHash },
     });
 
-    const aliceLogin = await request(httpServer)
-      .post('/auth/login')
-      .send({ email: 'alice.e2e@example.com', password: 'senha123' });
-    aliceToken = (aliceLogin.body as { accessToken: string }).accessToken;
+    // request.agent() persiste o cookie de sessão entre requisições,
+    // como um navegador real faria.
+    aliceAgent = request.agent(httpServer);
+    bobAgent = request.agent(httpServer);
 
-    const bobLogin = await request(httpServer)
-      .post('/auth/login')
-      .send({ email: 'bob.e2e@example.com', password: 'senha123' });
-    bobToken = (bobLogin.body as { accessToken: string }).accessToken;
+    await aliceAgent
+      .post('/api/v1/auth/login')
+      .send({ email: 'alice.e2e@example.com', password: 'senha123' })
+      .expect(200);
+
+    await bobAgent
+      .post('/api/v1/auth/login')
+      .send({ email: 'bob.e2e@example.com', password: 'senha123' })
+      .expect(200);
   });
 
   afterAll(async () => {
@@ -66,9 +77,8 @@ describe('Notes (e2e)', () => {
   });
 
   it('Alice cria uma nota', async () => {
-    const response = await request(httpServer)
-      .post('/notes')
-      .set('Authorization', `Bearer ${aliceToken}`)
+    const response = await aliceAgent
+      .post('/api/v1/notes')
       .send({ title: 'Nota da Alice', content: 'Conteúdo secreto' })
       .expect(201);
 
@@ -77,16 +87,12 @@ describe('Notes (e2e)', () => {
   });
 
   it('Alice acessa a própria nota (200)', async () => {
-    await request(httpServer)
-      .get(`/notes/${aliceNoteId}`)
-      .set('Authorization', `Bearer ${aliceToken}`)
-      .expect(200);
+    await aliceAgent.get(`/api/v1/notes/${aliceNoteId}`).expect(200);
   });
 
   it('Bob NÃO acessa a nota da Alice (403)', async () => {
-    const response = await request(httpServer)
-      .get(`/notes/${aliceNoteId}`)
-      .set('Authorization', `Bearer ${bobToken}`)
+    const response = await bobAgent
+      .get(`/api/v1/notes/${aliceNoteId}`)
       .expect(403);
 
     expect(response.body).toMatchObject({
@@ -95,15 +101,26 @@ describe('Notes (e2e)', () => {
     });
   });
 
-  it('rejeita requisição sem token (401)', async () => {
-    await request(httpServer).get(`/notes/${aliceNoteId}`).expect(401);
+  it('rejeita requisição sem cookie de sessão (401)', async () => {
+    await request(httpServer).get(`/api/v1/notes/${aliceNoteId}`).expect(401);
   });
 
   it('rejeita criação de nota sem título (400)', async () => {
-    await request(httpServer)
-      .post('/notes')
-      .set('Authorization', `Bearer ${aliceToken}`)
+    await aliceAgent
+      .post('/api/v1/notes')
       .send({ content: 'sem título' })
       .expect(400);
+  });
+
+  it('logout revoga a sessão (requisições seguintes retornam 401)', async () => {
+    const logoutAgent = request.agent(httpServer);
+
+    await logoutAgent
+      .post('/api/v1/auth/login')
+      .send({ email: 'bob.e2e@example.com', password: 'senha123' })
+      .expect(200);
+
+    await logoutAgent.post('/api/v1/auth/logout').expect(204);
+    await logoutAgent.get('/api/v1/notes').expect(401);
   });
 });
