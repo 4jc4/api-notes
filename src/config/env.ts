@@ -8,10 +8,10 @@ export const envSchema = z.object({
     .default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.url(),
-  JWT_SECRET: z
+  SESSION_SECRET: z
     .string()
-    .min(32, 'JWT_SECRET deve ter pelo menos 32 caracteres'),
-  JWT_EXPIRES_IN: z.string().regex(durationRegex).default('1h'),
+    .min(32, 'SESSION_SECRET deve ter pelo menos 32 caracteres'),
+  SESSION_TTL: z.string().regex(durationRegex).default('7d'),
 });
 
 export type Env = z.infer<typeof envSchema>;

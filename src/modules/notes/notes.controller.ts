@@ -11,34 +11,34 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import type { JwtPayload } from '../auth/jwt.strategy.js';
+import { SessionAuthGuard } from '../auth/session-auth.guard.js';
+import type { SessionUser } from '../auth/session.service.js';
 import { CreateNoteDto, UpdateNoteDto } from './dto/note.schema.js';
 import { NotesService } from './notes.service.js';
 
 @Controller('notes')
-@UseGuards(JwtAuthGuard)
+@UseGuards(SessionAuthGuard)
 export class NotesController {
   constructor(private readonly notesService: NotesService) {}
 
   @Post()
-  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateNoteDto) {
+  create(@CurrentUser() user: SessionUser, @Body() dto: CreateNoteDto) {
     return this.notesService.create(user.sub, dto);
   }
 
   @Get()
-  findAll(@CurrentUser() user: JwtPayload) {
+  findAll(@CurrentUser() user: SessionUser) {
     return this.notesService.findAll(user.sub);
   }
 
   @Get(':id')
-  findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+  findOne(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.notesService.findOne(user.sub, id);
   }
 
   @Patch(':id')
   update(
-    @CurrentUser() user: JwtPayload,
+    @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Body() dto: UpdateNoteDto,
   ) {
@@ -47,7 +47,7 @@ export class NotesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+  remove(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.notesService.remove(user.sub, id);
   }
 }

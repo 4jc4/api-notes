@@ -1,21 +1,23 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import argon2 from 'argon2';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type { LoginDto } from './dto/login.schema.js';
+import { SessionService } from './session.service.js';
 
-export interface AuthTokenResponse {
-  accessToken: string;
+export interface LoginResult {
+  token: string;
+  expiresAt: Date;
+  user: { id: string; email: string };
 }
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
+    private readonly sessionService: SessionService,
   ) {}
 
-  async login(dto: LoginDto): Promise<AuthTokenResponse> {
+  async login(dto: LoginDto): Promise<LoginResult> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -30,11 +32,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const accessToken = await this.jwtService.signAsync({
-      sub: user.id,
-      email: user.email,
-    });
+    const { token, expiresAt } = await this.sessionService.create(user.id);
 
-    return { accessToken };
+    return { token, expiresAt, user: { id: user.id, email: user.email } };
+  }
+
+  async logout(token: string): Promise<void> {
+    await this.sessionService.revoke(token);
   }
 }
