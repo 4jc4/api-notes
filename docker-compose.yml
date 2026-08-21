@@ -1,15 +1,17 @@
 services:
   api:
-    build: .
-    image: api-notes:latest
+    image: ghcr.io/4jc4/api-notes:${IMAGE_TAG:-latest}
     restart: unless-stopped
+
     ports:
       - '3000:3000'
+
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
       SESSION_TTL: ${SESSION_TTL}
+
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/health']
       interval: 10s

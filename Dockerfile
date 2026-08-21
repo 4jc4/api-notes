@@ -1,4 +1,4 @@
-# ---- Build stage ----
+# ---- Build ----
 FROM node:24-alpine AS builder
 
 WORKDIR /app
@@ -8,21 +8,23 @@ RUN npm ci --ignore-scripts
 
 COPY . .
 
-# DATABASE_URL fake — necessária só para prisma.config.ts resolver a validação
-# no momento do build. `prisma generate` não conecta de verdade no banco.
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 
 RUN npx prisma generate
 RUN npm run build
 
-# ---- Runtime stage ----
+
+# ---- Runtime ----
 FROM node:24-alpine AS runtime
 
 WORKDIR /app
+
 ENV NODE_ENV=production
 
 COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts
+
+RUN npm ci --omit=dev --ignore-scripts \
+    && npm install --no-save --ignore-scripts prisma@7.8.0
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/generated ./src/generated
