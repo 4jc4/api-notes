@@ -14,6 +14,42 @@ permissions:
   packages: write
 
 jobs:
+  publish-openapi:
+    name: Publish OpenAPI contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate openapi/openapi.json
+        run: npm run openapi:generate
+
+      - name: Publish as GitHub Release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view openapi-latest >/dev/null 2>&1; then
+            gh release delete openapi-latest --yes --cleanup-tag
+          fi
+
+          gh release create openapi-latest openapi/openapi.json \
+            --title "OpenAPI contract (auto-generated)" \
+            --notes "Gerado a partir do commit ${{ github.sha }}. Consumido pelo web-notes via \`npm run api:sync\`. Não é uma release de código — é só o artefato do contrato HTTP."
+
   build:
     name: Build and publish ARM64
     runs-on: ubuntu-latest
