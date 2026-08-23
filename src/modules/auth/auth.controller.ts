@@ -10,9 +10,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
+import { ZodResponse } from 'nestjs-zod';
 import type { Env } from '../../config/env.js';
 import { AuthService } from './auth.service.js';
-import { LoginDto } from './dto/login.schema.js';
+import { AuthUserDto, LoginDto } from './dto/login.schema.js';
 import {
   SESSION_COOKIE_NAME,
   buildSessionCookieOptions,
@@ -28,6 +29,11 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ZodResponse({
+    description:
+      'Login bem-sucedido. A sessão é entregue via cookie httpOnly `sid` (Set-Cookie), não no corpo.',
+    type: AuthUserDto,
+  })
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
