@@ -27,10 +27,14 @@ RUN npm ci --omit=dev --ignore-scripts \
     && npm install --no-save --ignore-scripts prisma@7.8.0
 
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src/generated ./src/generated
+# tsc emite em dist/src/ (a raiz comum inclui scripts/, fora de src/ —
+# ver scripts/generate-openapi.ts), então o Prisma Client gerado
+# precisa ficar ao lado do dist/src compilado, não em ./src, pra
+# dist/src/prisma/prisma.service.js resolver '../generated/...'.
+COPY --from=builder /app/src/generated ./dist/src/generated
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
