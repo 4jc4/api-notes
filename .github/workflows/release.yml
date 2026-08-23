@@ -66,7 +66,9 @@ jobs:
   build:
     name: Build and publish ARM64
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # A compilação ARM64 usa QEMU no runner x64 e pode ultrapassar 30
+    # minutos quando o cache do Buildx está frio.
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
