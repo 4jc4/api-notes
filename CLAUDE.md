@@ -67,6 +67,11 @@ Auth uses server-side sessions, not JWTs:
 
 ### CI/CD
 
-- `.github/workflows/ci.yml` runs on PRs to `main`: lint, unit tests, e2e tests against a real `postgres:17-alpine` service container, and a Docker build validation.
-- `.github/workflows/deploy.yml` runs on push to `main`, on a **self-hosted runner**, and SSHes into a fixed production host to `git pull`, run `prisma migrate deploy`, and `docker compose up -d --build`, then polls `/health`.
-- `Dockerfile` is a multi-stage build; the builder stage sets a fake `DATABASE_URL` only so `prisma generate`/`prisma.config.ts` can resolve during build (it never connects to a real database at build time).
+- `main` is protected; changes arrive through Pull Requests.
+- `.github/workflows/ci.yml` validates PR title, lint, unit tests, e2e tests against a real `postgres:17-alpine` service container, and Docker build.
+- `.github/workflows/release.yml` runs on pushes to `main`. In parallel it publishes the OpenAPI contract as the `openapi-latest` GitHub Release asset and builds/pushes `linux/arm64` images to GHCR. The ARM64/QEMU build has a 60-minute timeout for cold caches.
+- After the image is published, the repository-specific self-hosted runner in LXC 103 deploys through SSH to `deploy@192.168.1.31`, updates `/opt/app/docker-compose.yml`, pulls the immutable commit-SHA image, recreates `app-api-1`, and requires a successful `/health` check.
+- Production is a runtime host: never `git pull`, install dependencies, compile source, or build Docker images in LXC 102 during normal deployment.
+- `Dockerfile` is multi-stage; the builder uses a placeholder `DATABASE_URL` only so Prisma configuration can resolve. It does not connect to a database while building.
+
+Operational documentation lives in `docs/architecture.md`, `docs/deployment.md`, `docs/infrastructure.md`, and `docs/runbook.md`. Keep it synchronized with architecture or deployment changes.
