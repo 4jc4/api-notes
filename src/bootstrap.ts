@@ -6,11 +6,12 @@ import { cleanupOpenApiDoc } from 'nestjs-zod';
 // precisam produzir exatamente o mesmo prefixo de rotas e o mesmo
 // documento OpenAPI, senão o contrato gerado diverge da API real.
 
-export const GLOBAL_PREFIX = 'api/v1';
+export const GLOBAL_PREFIX = 'v1';
 
 /**
- * Arquitetura de subcaminhos (domain.com/api/v1) atrás de um proxy
- * reverso: mesma origem do front-end, sem necessidade de CORS.
+ * O NestJS é responsável somente pelo versionamento (`/v1`). O proxy
+ * reverso é responsável pelo prefixo público `/api` e o remove antes de
+ * encaminhar a requisição (`/api/v1/notes` -> `/v1/notes`).
  * /health fica fora do prefixo para os healthchecks de infra
  * (Docker/deploy).
  */
