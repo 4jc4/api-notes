@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
       - name: Generate openapi/openapi.json
         run: npm run openapi:generate
 
