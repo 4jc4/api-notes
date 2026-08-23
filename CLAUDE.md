@@ -46,7 +46,7 @@ NestJS 11 API (ESM, `"type": "module"`), Prisma 7 with the `@prisma/adapter-pg` 
 
 ### HTTP surface (`src/main.ts`)
 
-- `app.setGlobalPrefix('api/v1', { exclude: [{ path: 'health', method: RequestMethod.GET }] })` — all routes live under `/api/v1/*` except `GET /health`, which is deliberately excluded because infra healthchecks (`docker-compose.yml`, `.github/workflows/deploy.yml`) hit `/health` directly.
+- `app.setGlobalPrefix('v1', { exclude: [{ path: 'health', method: RequestMethod.GET }] })` — internal routes live under `/v1/*` except `GET /health`. The reverse proxy owns the public `/api` boundary and strips it, so browser `/api/v1/*` reaches NestJS as `/v1/*`.
 - No CORS is configured. The deployment model is same-origin behind a reverse proxy (frontend and `/api/*` served from one domain) — don't add `app.enableCors()` without revisiting that decision.
 - `ProblemDetailsFilter` (`src/common/filters/problem-details.filter.ts`) is the single global exception filter (`@Catch()`), turning every thrown exception — including Zod validation failures — into an RFC 7807 `application/problem+json` body (`type`, `title`, `status`, `detail`, `instance`).
 

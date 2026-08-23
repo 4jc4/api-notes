@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import type { Server } from 'node:http';
 import request, { type Agent } from 'supertest';
 import { AppModule } from '../src/app.module.js';
+import { applyGlobalPrefix } from '../src/bootstrap.js';
 import { ProblemDetailsFilter } from '../src/common/filters/problem-details.filter.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
@@ -36,7 +37,7 @@ describe('Notes (e2e)', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
-    app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+    applyGlobalPrefix(app);
     app.use(cookieParser());
     app.useGlobalFilters(new ProblemDetailsFilter());
     await app.init();
@@ -61,12 +62,12 @@ describe('Notes (e2e)', () => {
     bobAgent = request.agent(httpServer);
 
     await aliceAgent
-      .post('/api/v1/auth/login')
+      .post('/v1/auth/login')
       .send({ email: 'alice.e2e@example.com', password: 'senha123' })
       .expect(200);
 
     await bobAgent
-      .post('/api/v1/auth/login')
+      .post('/v1/auth/login')
       .send({ email: 'bob.e2e@example.com', password: 'senha123' })
       .expect(200);
   });
@@ -78,7 +79,7 @@ describe('Notes (e2e)', () => {
 
   it('Alice cria uma nota', async () => {
     const response = await aliceAgent
-      .post('/api/v1/notes')
+      .post('/v1/notes')
       .send({ title: 'Nota da Alice', content: 'Conteúdo secreto' })
       .expect(201);
 
@@ -87,13 +88,11 @@ describe('Notes (e2e)', () => {
   });
 
   it('Alice acessa a própria nota (200)', async () => {
-    await aliceAgent.get(`/api/v1/notes/${aliceNoteId}`).expect(200);
+    await aliceAgent.get(`/v1/notes/${aliceNoteId}`).expect(200);
   });
 
   it('Bob NÃO acessa a nota da Alice (403)', async () => {
-    const response = await bobAgent
-      .get(`/api/v1/notes/${aliceNoteId}`)
-      .expect(403);
+    const response = await bobAgent.get(`/v1/notes/${aliceNoteId}`).expect(403);
 
     expect(response.body).toMatchObject({
       status: 403,
@@ -102,12 +101,12 @@ describe('Notes (e2e)', () => {
   });
 
   it('rejeita requisição sem cookie de sessão (401)', async () => {
-    await request(httpServer).get(`/api/v1/notes/${aliceNoteId}`).expect(401);
+    await request(httpServer).get(`/v1/notes/${aliceNoteId}`).expect(401);
   });
 
   it('rejeita criação de nota sem título (400)', async () => {
     await aliceAgent
-      .post('/api/v1/notes')
+      .post('/v1/notes')
       .send({ content: 'sem título' })
       .expect(400);
   });
@@ -116,11 +115,11 @@ describe('Notes (e2e)', () => {
     const logoutAgent = request.agent(httpServer);
 
     await logoutAgent
-      .post('/api/v1/auth/login')
+      .post('/v1/auth/login')
       .send({ email: 'bob.e2e@example.com', password: 'senha123' })
       .expect(200);
 
-    await logoutAgent.post('/api/v1/auth/logout').expect(204);
-    await logoutAgent.get('/api/v1/notes').expect(401);
+    await logoutAgent.post('/v1/auth/logout').expect(204);
+    await logoutAgent.get('/v1/notes').expect(401);
   });
 });
