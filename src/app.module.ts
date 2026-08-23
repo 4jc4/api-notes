@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_PIPE } from '@nestjs/core';
-import { ZodValidationPipe } from 'nestjs-zod';
+import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { validateEnv } from './config/env.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -24,6 +24,13 @@ import { PrismaModule } from './prisma/prisma.module.js';
     {
       provide: APP_PIPE,
       useClass: ZodValidationPipe,
+    },
+    // Serializa respostas de rotas marcadas com @ZodResponse/@ZodSerializerDto
+    // segundo o schema Zod de saída — necessário para @ZodResponse
+    // funcionar em runtime (ver docs OpenAPI da nestjs-zod).
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ZodSerializerInterceptor,
     },
   ],
 })
