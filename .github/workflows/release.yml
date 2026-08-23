@@ -22,11 +22,15 @@ jobs:
     permissions:
       contents: write
 
-    # prisma.config.ts exige DATABASE_URL só pra resolver a config —
+    # DATABASE_URL: prisma.config.ts exige pra resolver a config —
     # generate não conecta de verdade (mesmo padrão do builder stage do
-    # Dockerfile).
+    # Dockerfile). SESSION_SECRET/NODE_ENV: só pra passar na validação
+    # de ConfigModule.forRoot (src/app.module.ts) — nenhum dos dois é
+    # usado de verdade nesta geração.
     env:
       DATABASE_URL: postgresql://build:build@localhost:5432/build
+      SESSION_SECRET: openapi-generation-placeholder-secret-value-32c
+      NODE_ENV: test
 
     steps:
       - name: Checkout
