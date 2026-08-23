@@ -17,19 +17,22 @@
  * `tsx`/esbuild — o transpiler do esbuild não emite `design:paramtypes`
  * corretamente para os providers do Nest aqui (ex.: `SessionService`
  * fica com `ConfigService` undefined no construtor).
+ *
+ * Nota: DATABASE_URL e SESSION_SECRET (formato apenas — nenhuma conexão
+ * real é aberta) precisam já estar no ambiente *antes* de rodar este
+ * script, não dentro dele. `ConfigModule.forRoot({ validate })`
+ * (src/app.module.ts) valida de forma síncrona no momento em que
+ * `AppModule` é importado — mais cedo do que qualquer
+ * `process.env.X = ...` que este próprio arquivo pudesse fazer antes da
+ * sua import estática de AppModule ser avaliada. Localmente, o `.env`
+ * do projeto já resolve isso; no CI, ver o `env:` do job
+ * publish-openapi em .github/workflows/release.yml.
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module.js';
 import { applyGlobalPrefix, buildOpenApiDocument } from '../src/bootstrap.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
-
-// Só precisa passar na validação de formato do Zod (src/config/env.ts);
-// nenhuma conexão real é aberta com esses valores.
-process.env.DATABASE_URL ??=
-  'postgresql://openapi:openapi@localhost:5432/openapi';
-process.env.SESSION_SECRET ??= 'openapi-generation-placeholder-secret-value';
-process.env.NODE_ENV ??= 'test';
 
 const OUTPUT_DIR = 'openapi';
 const OUTPUT_FILE = `${OUTPUT_DIR}/openapi.json`;
