@@ -18,6 +18,7 @@ on:
         options:
           - diagnose
           - clean
+          - logs
 
 permissions:
   contents: read
@@ -41,6 +42,17 @@ jobs:
             echo
             echo '=== docker ps -a ==='
             docker ps -a
+          "
+
+      - name: Logs
+        if: inputs.action == 'logs'
+        run: |
+          ssh deploy@192.168.1.31 "
+            echo '=== docker ps -a ==='
+            docker ps -a
+            echo
+            echo '=== docker logs app-api-1 (tail 200) ==='
+            docker logs --tail 200 app-api-1
           "
 
       - name: Clean (builder cache + dangling images only)
